@@ -5,21 +5,21 @@
 #ifndef GRID_MAP_H_
 #define GRID_MAP_H_
 
-#include <Eigen/Eigen>
-#include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+#include <ros/ros.h>
+#include <ros/time.h>
 
+#include <Eigen/Eigen>
+#include <cmath>
 #include <iostream>
 #include <memory>
-#include <vector>
 #include <string>
-#include <cmath>
+#include <vector>
 
 namespace plan_frame {
 
 class GridMap {
-private:
-
+ private:
   ros::NodeHandle map_node;
 
   double _global_x_size, _global_y_size, _global_z_size;
@@ -30,27 +30,43 @@ private:
   unsigned _idx_max, _idy_max, _idz_max;
   unsigned long total_index;
 
-  std::vector<double> global_data;
-  std::vector<short> occ_state_data;
-  std::vector<double> local_data;
+  std::vector<short> occ_state_data;  // OCC data buffer.
+  std::vector<double> distance_data;  // ESDF data buffer.
 
   Eigen::Vector3d origin;
 
-  bool map_schema;
+  bool map_schema;  // true : real flight; false: simulation
   bool out_range;
+  bool update_local_occ_flag;
+  ros::Time update_local_timestamp;
 
-public:
+  ros::Timer local_occ_timer;
+
+
+
+ public:
   GridMap(){};
   ~GridMap(){};
 
   void initMap(ros::NodeHandle &nh);
 
-  unsigned posToIndex(Eigen::Vector3d postion);
-  Eigen::Vector3d indexToPos(unsigned index);
+  // convert coordinates to buffer index.
+  unsigned coordToBufferIndex(Eigen::Vector3d coord);
+
+  // convert <x, y, z> index to an integer index in the buffer.
+  unsigned posToBufferIndex(Eigen::Vector3i position);
+
+  // convert buffer index to <x, y ,z> index format.
+  Eigen::Vector3i bufferIndexToPos(unsigned index);
 
   void publishMapPCL(ros::NodeHandle &nh);
+
+  // TODO: compute esdf
+  void computeEsdf(Eigen::Vector3d pos);
+
+  void updateLocalOccCallback(const ros::TimerEvent& e)
 };
 
-} // namespace plan_frame
+}  // namespace plan_frame
 
-#endif // GRID_MAP_H_
+#endif  // GRID_MAP_H_
